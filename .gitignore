@@ -1,2 +1,5 @@
 .vscode/
 test_data/
+*.db
+.pylintrc
+__pycache__/
