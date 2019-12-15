@@ -111,6 +111,8 @@ def save_cache(pickle_path='serialized/cache.pickle'):
         pickle.dump(cache, out_pickle)
     conn.close()
 
+    logger.info('Saving cache and exiting')
+
 
 def text_changed(search_input):
     """
