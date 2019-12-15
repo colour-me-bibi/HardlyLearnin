@@ -63,7 +63,7 @@
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QTextBrowser" name="history">
+   <widget class="QListWidget" name="history">
     <property name="geometry">
      <rect>
       <x>830</x>
@@ -71,9 +71,6 @@
       <width>381</width>
       <height>601</height>
      </rect>
-    </property>
-    <property name="readOnly">
-     <bool>true</bool>
     </property>
    </widget>
   </widget>

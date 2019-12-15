@@ -7,6 +7,7 @@ import os
 import pickle
 import atexit
 import time
+import hashlib
 from codecs import encode, decode
 from model.Chunk import Chunk
 from model.Source import Source
@@ -41,7 +42,8 @@ def init_db(file_base_name='HardlyLearnin'):
 
     c.execute('''
     CREATE TABLE IF NOT EXISTS imported (
-        source TEXT UNIQUE
+        source TEXT,
+        md5_hash TEXT UNIQUE
     )''')
 
     conn.commit()
@@ -52,17 +54,17 @@ def init_db(file_base_name='HardlyLearnin'):
 def insert_chunk(chunk):
     """Insets a chunk into the sqlite db"""
 
-    conn.cursor() \
-        .execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source)) \
-        .commit()
+    conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)',
+                          (chunk.content, chunk.source))
+    conn.commit()
 
 
 def insert_import(source):
     """Inserts an import into the sqlite db"""
 
-    conn.cursor() \
-        .execute('INSERT INTO imported VALUES (?)', (source,)) \
-        .commit()
+    conn.cursor().execute('INSERT INTO imported VALUES (?, ?)',
+                          (source.source, source.md5_hash))
+    conn.commit()
 
 
 def search_chunks(string):
@@ -116,7 +118,24 @@ def text_changed(search_input):
     results.setText(text)
 
     if text != '[]':
-        history.append(search_input)
+        if search_input not in history_list:
+            history_list.append(search_input)
+            history.addItem(search_input)
+
+
+def get_hash_of_file(file_path):
+    """Returns the md5 hash of a file"""
+
+    hasher = hashlib.md5()
+
+    with open(file_path, 'rb') as hash_file:
+        block_size = 65536
+        buf = hash_file.read(block_size)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = hash_file.read(block_size)
+
+    return hasher.hexdigest()
 
 
 if __name__ == '__main__':
@@ -125,14 +144,13 @@ if __name__ == '__main__':
     init_db()
 
     global cache
-    cache = load_cache() if os.path.getsize(
-        'serialized/cache.pickle') > 0 else dict()
+    cache = load_cache() if os.path.getsize('serialized/cache.pickle') > 0 else dict()
 
     atexit.register(save_cache)
 
     for docx_file in docx_files:
         try:
-            insert_import(docx_file)
+            insert_import(Source(docx_file, get_hash_of_file(docx_file)))
             for chunk in get_chucks(docx_file):
                 insert_chunk(Chunk(chunk, docx_file))
         except sqlite3.IntegrityError:
@@ -152,9 +170,14 @@ if __name__ == '__main__':
     results = window.findChild(QtWidgets.QTextBrowser, 'results')
 
     global history
-    history = window.findChild(QtWidgets.QTextBrowser, 'history')
+    history = window.findChild(QtWidgets.QListWidget, 'history')
+
+    global history_list
+    history_list = list()
 
     search_bar.textChanged[str].connect(lambda x: text_changed(x))
+
+    history.itemClicked.connect(lambda x: search_bar.setText(x.text()))
 
     window.show()
 
