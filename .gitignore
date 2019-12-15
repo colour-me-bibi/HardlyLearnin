@@ -3,5 +3,6 @@
 test_data/
 *.db
 *.log
+*.pickle
 .pylintrc
 __pycache__/

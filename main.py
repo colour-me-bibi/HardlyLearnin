@@ -91,17 +91,23 @@ def format_results(list_of_chunks):
     return str(added_links).replace('\\\\n', '\n').replace('\\\\t', '\t')
 
 
-def load_cache():
+def load_cache(pickle_path='serialized/cache.pickle'):
     """Returns the cache loaded from the cache.pickle file"""
 
-    with open('serialized/cache.pickle', 'rb') as in_pickle:
-        return pickle.load(in_pickle)
+    if not os.path.exists(pickle_path):
+        with open(pickle_path, 'wb+'): pass
+
+    if os.path.getsize(pickle_path) > 0:
+        with open(pickle_path, 'rb') as in_pickle:
+            return pickle.load(in_pickle)
+    else:
+        return dict()
 
 
-def save_cache():
+def save_cache(pickle_path='serialized/cache.pickle'):
     """Save the cache from the cache global variable as a pickle file"""
 
-    with open('serialized/cache.pickle', 'wb') as out_pickle:
+    with open(pickle_path, 'wb') as out_pickle:
         pickle.dump(cache, out_pickle)
     conn.close()
 
@@ -112,18 +118,19 @@ def text_changed(search_input):
     from the cache if available, otherwise from the sqlite db
     """
 
-    text = cache[search_input] if search_input in cache.keys() else None
+    if search_input is not '':
+        text = cache[search_input] if search_input in cache.keys() else None
 
-    if text is None:
-        text = format_results(search_chunks(search_input))
-        cache[search_input] = text
+        if text is None:
+            text = format_results(search_chunks(search_input))
+            cache[search_input] = text
 
-    results.setText(text)
+        results.setText(text)
 
-    if text != '[]':
-        if search_input not in history_list:
-            history_list.append(search_input)
-            history.addItem(search_input)
+        if text != '[]':
+            if search_input not in history_list:
+                history_list.append(search_input)
+                history.addItem(search_input)
 
 
 def get_hash_of_file(file_path):
@@ -149,12 +156,12 @@ if __name__ == '__main__':
     global logger
     logger = logging.getLogger()
 
-    docx_files = glob.glob('test_data/**.docx')
+    docx_files = glob.glob('import/**.docx')
 
     init_db()
 
     global cache
-    cache = load_cache() if os.path.getsize('serialized/cache.pickle') > 0 else dict()
+    cache = load_cache()
 
     atexit.register(save_cache)
 
