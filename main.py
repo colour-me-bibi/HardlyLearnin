@@ -6,10 +6,8 @@ import sys
 import os
 import pickle
 import atexit
-import time
 import hashlib
 import logging
-from codecs import encode, decode
 from model.Chunk import Chunk
 from model.Source import Source
 from PyQt5 import QtWidgets, uic
