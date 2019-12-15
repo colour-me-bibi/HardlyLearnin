@@ -50,18 +50,24 @@ def init_db(file_base_name='HardlyLearnin'):
 
 
 def insert_chunk(chunk):
+    """Insets a chunk into the sqlite db"""
+
     conn.cursor() \
         .execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source)) \
         .commit()
 
 
 def insert_import(source):
+    """Inserts an import into the sqlite db"""
+
     conn.cursor() \
         .execute('INSERT INTO imported VALUES (?)', (source,)) \
         .commit()
 
 
 def search_chunks(string):
+    """Returns a the results of a search in the sqlite db of chunks for a given string"""
+
     return conn.cursor() \
         .execute(f'SELECT * FROM chunks WHERE content LIKE ?', (f'%{string}%',)) \
         .fetchall()
