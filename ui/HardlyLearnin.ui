@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1847</width>
-    <height>1045</height>
+    <width>1225</width>
+    <height>646</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,56 +17,63 @@
    <widget class="QLineEdit" name="search_bar">
     <property name="geometry">
      <rect>
-      <x>440</x>
-      <y>30</y>
-      <width>991</width>
-      <height>41</height>
-     </rect>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>30</y>
-      <width>361</width>
+      <x>40</x>
+      <y>20</y>
+      <width>781</width>
       <height>41</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Monospace</family>
-      <pointsize>32</pointsize>
-      <weight>75</weight>
-      <italic>true</italic>
-      <bold>true</bold>
+      <pointsize>16</pointsize>
      </font>
     </property>
+    <property name="layoutDirection">
+     <enum>Qt::RightToLeft</enum>
+    </property>
     <property name="text">
-     <string>TextLabel</string>
+     <string/>
     </property>
     <property name="alignment">
-     <set>Qt::AlignCenter</set>
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+    <property name="dragEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="placeholderText">
+     <string>Type your search here...</string>
     </property>
    </widget>
    <widget class="QTextBrowser" name="results">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>110</y>
-      <width>1431</width>
-      <height>901</height>
+      <x>10</x>
+      <y>70</y>
+      <width>811</width>
+      <height>551</height>
      </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+    <property name="openExternalLinks">
+     <bool>true</bool>
+    </property>
+    <property name="openLinks">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QTextBrowser" name="history">
     <property name="geometry">
      <rect>
-      <x>1460</x>
-      <y>10</y>
+      <x>830</x>
+      <y>20</y>
       <width>381</width>
-      <height>1001</height>
+      <height>601</height>
      </rect>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
