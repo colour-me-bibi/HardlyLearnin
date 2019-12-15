@@ -8,6 +8,7 @@ import pickle
 import atexit
 import time
 import hashlib
+import logging
 from codecs import encode, decode
 from model.Chunk import Chunk
 from model.Source import Source
@@ -19,8 +20,7 @@ def get_chucks(docx_file):
     """Returns a list of chunks of content from a docx file"""
 
     text = str(textract.process(docx_file)).strip('b\'')
-    seq_new_line_counts = {text.count(x): x for x in set(
-        re.findall(r'(?:\\n)+', str(text)))}
+    seq_new_line_counts = {text.count(x): x for x in set(re.findall(r'(?:\\n)+', str(text)))}
     splitters = list(sorted(seq_new_line_counts.items()))
     # TODO maybe return list of Chunk objects
     return re.split('|'.join(map(re.escape, [x[1] for x in splitters[:-1]])), text)
@@ -54,17 +54,22 @@ def init_db(file_base_name='HardlyLearnin'):
 def insert_chunk(chunk):
     """Insets a chunk into the sqlite db"""
 
-    conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)',
-                          (chunk.content, chunk.source))
+    conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source))
     conn.commit()
 
 
 def insert_import(source):
     """Inserts an import into the sqlite db"""
 
-    conn.cursor().execute('INSERT INTO imported VALUES (?, ?)',
-                          (source.source, source.md5_hash))
+    # TODO check for same doc but dif hash
+    # if new hash of old doc, remove everything from old doc and insert new doc
+
+    conn.cursor().execute('INSERT INTO imported VALUES (?, ?)', (source.source, source.md5_hash))
     conn.commit()
+
+
+def remove_old(source):
+    pass
 
 
 def search_chunks(string):
@@ -106,7 +111,7 @@ def save_cache():
 def text_changed(search_input):
     """
     Updates the text in the results QTextBrowser with formatted results
-        from the cache if available, otherwise from the sqlite db
+    from the cache if available, otherwise from the sqlite db
     """
 
     text = cache[search_input] if search_input in cache.keys() else None
@@ -139,6 +144,13 @@ def get_hash_of_file(file_path):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='HardlyLearnin.log',
+                        level=logging.INFO,
+                        format='%(levelname)s %(asctime)s %(message)s')
+
+    global logger
+    logger = logging.getLogger()
+
     docx_files = glob.glob('test_data/**.docx')
 
     init_db()
@@ -154,7 +166,7 @@ if __name__ == '__main__':
             for chunk in get_chucks(docx_file):
                 insert_chunk(Chunk(chunk, docx_file))
         except sqlite3.IntegrityError:
-            print(f'Already imported {docx_file}')
+            logger.info(f'Already imported {docx_file}')
 
     app = QApplication(sys.argv)
     window = QMainWindow()

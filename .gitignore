@@ -1,5 +1,7 @@
 .vscode/
+.pep8
 test_data/
 *.db
+*.log
 .pylintrc
 __pycache__/
