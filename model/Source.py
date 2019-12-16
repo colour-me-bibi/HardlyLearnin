@@ -1,9 +1,9 @@
 class Source:
     """This is a class representing the db entry of a docx file source"""
 
-    def __init__(self, source, md5_hash):
-        self.source = source
-        self.md5_hash = md5_hash
+    def __init__(self, name, file_hash):
+        self.name = name
+        self.file_hash = file_hash
 
     def __str__(self):
-        return f'Source (content: {self.source}, source: {self.md5_hash})'
+        return f'Source (content: {self.name}, source: {self.file_hash})'
