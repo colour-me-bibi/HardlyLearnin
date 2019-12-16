@@ -167,6 +167,8 @@ class MainWindow(QMainWindow):
                 self.results.setText(f'No results for...\n\t{text}')
 
     def history_item_selected(self, text):
+        """Sets the search_bar to the selected text without deboucing results"""
+
         self.search_bar.setText(text)
         self.text_submitted()
 
