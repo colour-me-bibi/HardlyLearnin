@@ -17,6 +17,10 @@ from model.Chunk import Chunk
 from model.Source import Source
 
 
+# TODO maintain formatting from the docx files
+# TODO fix handling of opening external links
+
+
 class MainWindow(QMainWindow):
     """MainWindow object, manages the UI and handles db calls"""
 
@@ -25,7 +29,7 @@ class MainWindow(QMainWindow):
         Initializes the UI, logger, db connection, and cache
         then processes files in the import directory
         """
-        
+
         super(MainWindow, self).__init__()
 
         uic.loadUi('ui/HardlyLearnin.ui', self)
@@ -170,7 +174,7 @@ class MainWindow(QMainWindow):
         self.logger.info('Saved cache and closed db connection. Exiting...')
 
 
-def get_chucks(docx_file): # TODO fix str encoding
+def get_chucks(docx_file):  # TODO fix str encoding
     """Returns a list of chunks of content from a docx file"""
 
     text = str(textract.process(docx_file)).strip('b\'')
@@ -180,7 +184,7 @@ def get_chucks(docx_file): # TODO fix str encoding
     return re.split('|'.join(map(re.escape, [x[1] for x in splitters[:-1]])), text)
 
 
-def format_results(list_of_chunks): # TODO unfuck
+def format_results(list_of_chunks):  # TODO unfuck
     """Returns text formatted for a QTextBrowser"""
 
     def wrap_in_link(path):
