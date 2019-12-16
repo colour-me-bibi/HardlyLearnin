@@ -42,11 +42,11 @@ class MainWindow(QMainWindow):
         self.debounce.timeout.connect(self.text_submitted)
 
         self.search_bar = self.findChild(QtWidgets.QLineEdit, 'search_bar')
-        self.search_bar.textChanged.connect(self.debounce.start)
+        self.search_bar.textEdited.connect(self.debounce.start)
 
         self.history_list = list()
         self.history = self.findChild(QtWidgets.QListWidget, 'history')
-        self.history.itemClicked.connect(lambda x: self.search_bar.setText(x.text()))
+        self.history.itemClicked.connect(lambda x: self.history_item_selected(x.text()))
 
         self.results = self.findChild(QtWidgets.QTextBrowser, 'results')
 
@@ -165,6 +165,10 @@ class MainWindow(QMainWindow):
                     self.history.addItem(search_input)
             else:
                 self.results.setText(f'No results for...\n\t{text}')
+
+    def history_item_selected(self, text):
+        self.search_bar.setText(text)
+        self.text_submitted()
 
     def clean_up_on_exit(self):
         """Called on exit. Saves the cache and closes the db connection."""
