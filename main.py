@@ -18,8 +18,16 @@ from model.Source import Source
 
 
 class MainWindow(QMainWindow):
+    """MainWindow object, manages the UI and handles db calls"""
+
     def __init__(self):
+        """
+        Initializes the UI, logger, db connection, and cache
+        then processes files in the import directory
+        """
+        
         super(MainWindow, self).__init__()
+
         uic.loadUi('ui/HardlyLearnin.ui', self)
         self.setWindowTitle('HardlyLearnin')
         self.show()
@@ -30,7 +38,7 @@ class MainWindow(QMainWindow):
         self.debounce.timeout.connect(self.text_submitted)
 
         self.search_bar = self.findChild(QtWidgets.QLineEdit, 'search_bar')
-        self.search_bar.textChanged[str].connect(self.debounce.start)
+        self.search_bar.textChanged.connect(self.debounce.start)
 
         self.history_list = list()
         self.history = self.findChild(QtWidgets.QListWidget, 'history')
@@ -114,6 +122,8 @@ class MainWindow(QMainWindow):
         self.conn.commit()
 
     def remove_old(self, name):
+        """Removes references of an old file from the cache and db"""
+
         self.conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (name,))
         self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (name,))
         self.conn.commit()
@@ -123,7 +133,7 @@ class MainWindow(QMainWindow):
                 del self.cache[x]  # TODO probably can be optimized
 
     def search_chunks(self, string):
-        """Returns a the results of a search in the sqlite db of chunks for a given string"""
+        """Returns a the results of a db query on the chunks table for the given string"""
 
         return self.conn.cursor() \
             .execute(f'SELECT * FROM chunks WHERE content LIKE ?', (f'%{string}%',)) \
@@ -153,12 +163,14 @@ class MainWindow(QMainWindow):
                 self.results.setText(f'No results for...\n\t{text}')
 
     def clean_up_on_exit(self):
+        """Called on exit. Saves the cache and closes the db connection."""
+
         self.save_cache()
         self.conn.close()
         self.logger.info('Saved cache and closed db connection. Exiting...')
 
 
-def get_chucks(docx_file):
+def get_chucks(docx_file): # TODO fix str encoding
     """Returns a list of chunks of content from a docx file"""
 
     text = str(textract.process(docx_file)).strip('b\'')
@@ -168,7 +180,7 @@ def get_chucks(docx_file):
     return re.split('|'.join(map(re.escape, [x[1] for x in splitters[:-1]])), text)
 
 
-def format_results(list_of_chunks):
+def format_results(list_of_chunks): # TODO unfuck
     """Returns text formatted for a QTextBrowser"""
 
     def wrap_in_link(path):
