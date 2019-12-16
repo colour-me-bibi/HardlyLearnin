@@ -59,15 +59,24 @@ def insert_chunk(chunk):
 def insert_import(source):
     """Inserts an import into the sqlite db"""
 
-    # TODO check for same doc but dif hash
-    # if new hash of old doc, remove everything from old doc and insert new doc
+    result = conn.cursor() \
+                 .execute('SELECT source FROM imported WHERE source = ? AND md5_hash != ?', (source.source, source.md5_hash)) \
+                 .fetchone()
+    if result is not None:
+        remove_old(source.source)
 
     conn.cursor().execute('INSERT INTO imported VALUES (?, ?)', (source.source, source.md5_hash))
     conn.commit()
 
 
 def remove_old(source):
-    pass
+    conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (source,))
+    conn.cursor().execute('DELETE FROM imported WHERE source = ?', (source,))
+    conn.commit()
+
+    for x, y in cache.items():
+        if y == source:
+            del cache[x]
 
 
 def search_chunks(string):
@@ -95,7 +104,8 @@ def load_cache(pickle_path='serialized/cache.pickle'):
     """Returns the cache loaded from the cache.pickle file"""
 
     if not os.path.exists(pickle_path):
-        with open(pickle_path, 'wb+'): pass
+        with open(pickle_path, 'wb+'):
+            pass
 
     if os.path.getsize(pickle_path) > 0:
         with open(pickle_path, 'rb') as in_pickle:
@@ -158,8 +168,6 @@ if __name__ == '__main__':
     global logger
     logger = logging.getLogger()
 
-    docx_files = glob.glob('import/**.docx')
-
     init_db()
 
     global cache
@@ -167,7 +175,7 @@ if __name__ == '__main__':
 
     atexit.register(save_cache)
 
-    for docx_file in docx_files:
+    for docx_file in glob.glob('import/**.docx'):
         try:
             insert_import(Source(docx_file, get_hash_of_file(docx_file)))
             for chunk in get_chucks(docx_file):
