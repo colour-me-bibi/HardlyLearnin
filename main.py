@@ -10,11 +10,12 @@ import sys
 import textract
 
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QThread, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
-from model.Chunk import Chunk
-from model.Source import Source
+from model import Chunk, Source, Emission
+from worker import Worker
+from util import get_file_hash, format_results
 
 
 # TODO maintain formatting from the docx files
@@ -59,13 +60,41 @@ class MainWindow(QMainWindow):
 
         self.cache = self.load_cache()
 
-        for docx_file in glob.glob('import/**.docx'):
-            try:
-                self.insert_source(Source(docx_file, get_hash_of_file(docx_file)))
-                for chunk in get_chucks(docx_file):
-                    self.insert_chunk(Chunk(chunk, docx_file))
-            except sqlite3.IntegrityError:
-                self.logger.info(f'Already imported {docx_file}')
+        list_of_sources = [Source(x, get_file_hash(x)) for x in glob.glob('import/**.docx')]
+        self.logger.info(f'list_of_sources={[str(x) for x in list_of_sources]}')
+
+        list_of_new_sources = list()
+
+        for i, source in enumerate(list_of_sources):
+            # Remove files with same hash as new ones
+            old_file = self.conn.cursor().execute('SELECT name FROM sources WHERE name = ? AND file_hash != ?',
+                                                  (source.name, source.file_hash)).fetchone()
+            self.logger.info(f'old_file={old_file}')
+
+            if old_file is not None:
+                self.logger.info(f'Removing old references to {source}')
+                self.remove_old(source)
+
+            # Remove already imported files from list to be imported
+            same_file = self.conn.cursor().execute('SELECT name FROM sources WHERE name = ?', (source.name,)).fetchone()
+            self.logger.info(f'same_file={same_file}')
+
+            if same_file is None:
+                list_of_new_sources.append(source)
+            else:
+                self.logger.info(f'Skipping already imported {source}')
+
+        self.logger.info(f'list_of_new_sources={[str(x) for x in list_of_new_sources]}')
+
+        # Initialize worker on a new thread
+        self.worker = Worker(69, list_of_new_sources)
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+
+        # Define behavior of worker
+        self.worker.sig_done.connect(self.insert_emission)
+        self.thread.started.connect(self.worker.work)
+        self.thread.start()
 
     def init_db(self, file_base_name='HardlyLearnin'):
         """Initializes the sqlite db connection as the global variable conn"""
@@ -107,34 +136,23 @@ class MainWindow(QMainWindow):
         with open(pickle_path, 'wb') as out_pickle:
             pickle.dump(self.cache, out_pickle)
 
-    def insert_chunk(self, chunk):
-        """Insets a chunk into the sqlite db"""
-
-        self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source))
+    @pyqtSlot(int, Emission)
+    def insert_emission(self, id, emission):
+        for chunk in emission.list_of_chunks:
+            self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source))
+        self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
         self.conn.commit()
 
-    def insert_source(self, source):
-        """Inserts an import into the sqlite db"""
-
-        result = self.conn.cursor() \
-            .execute('SELECT name FROM sources WHERE name = ? AND file_hash != ?', (source.name, source.file_hash)) \
-            .fetchone()
-        if result is not None:
-            self.remove_old(source.name)
-
-        self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (source.name, source.file_hash))
-        self.conn.commit()
-
-    def remove_old(self, name):
+    def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
 
-        self.conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (name,))
-        self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (name,))
+        self.conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (source.name,))
+        self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (source.name,))
         self.conn.commit()
 
-        for x, y in self.cache.items():
-            if y == name:
-                del self.cache[x]  # TODO probably can be optimized
+        for k, v in self.cache.items():
+            if v == source.name:
+                del self.cache[k]  # TODO probably can be optimized
 
     def search_chunks(self, string):
         """Returns a the results of a db query on the chunks table for the given string"""
@@ -157,6 +175,9 @@ class MainWindow(QMainWindow):
             if text is None:
                 text = format_results(self.search_chunks(search_input))
                 self.cache[search_input] = text
+                self.logger.info(f'Saved {search_input} to cache')
+            else:
+                self.logger.info(f'Retrieved {search_input} from cache')
 
             if text != '[]':
                 self.results.setText(text)
@@ -164,13 +185,15 @@ class MainWindow(QMainWindow):
                     self.history_list.append(search_input)
                     self.history.addItem(search_input)
             else:
-                self.results.setText(f'No results for...\n\t{text}')
+                self.results.setText(f'No results for {text}...')
 
     def history_item_selected(self, text):
         """Sets the search_bar to the selected text without deboucing results"""
 
+        self.logger.info(f'history_item_selected: {text}')
         self.search_bar.setText(text)
         self.text_submitted()
+
 
     def clean_up_on_exit(self):
         """Called on exit. Saves the cache and closes the db connection."""
@@ -178,44 +201,6 @@ class MainWindow(QMainWindow):
         self.save_cache()
         self.conn.close()
         self.logger.info('Saved cache and closed db connection. Exiting...')
-
-
-def get_chucks(docx_file):  # TODO fix str encoding
-    """Returns a list of chunks of content from a docx file"""
-
-    text = str(textract.process(docx_file)).strip('b\'')
-    seq_new_line_counts = {text.count(x): x for x in set(re.findall(r'(?:\\n)+', str(text)))}
-    splitters = list(sorted(seq_new_line_counts.items()))
-    # TODO maybe return list of Chunk objects
-    return re.split('|'.join(map(re.escape, [x[1] for x in splitters[:-1]])), text)
-
-
-def format_results(list_of_chunks):  # TODO unfuck
-    """Returns text formatted for a QTextBrowser"""
-
-    def wrap_in_link(path):
-        """Returns a path wraped in an html link tag"""
-
-        return f'<a href={os.path.abspath(path)}>{path}</a>'
-
-    added_links = [(x[0], wrap_in_link(x[1])) for x in list_of_chunks]
-
-    return str(added_links).replace('\\\\n', '\n').replace('\\\\t', '\t')
-
-
-def get_hash_of_file(file_path):
-    """Returns the sha1 hash of a file"""
-
-    hasher = hashlib.sha1()
-
-    with open(file_path, 'rb') as hash_file:
-        block_size = 65536
-        buf = hash_file.read(block_size)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = hash_file.read(block_size)
-
-    return hasher.hexdigest()
 
 
 if __name__ == '__main__':
