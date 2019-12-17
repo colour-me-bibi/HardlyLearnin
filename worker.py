@@ -1,8 +1,10 @@
-import textract
 import re
 
+import textract
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
-from model import Chunk, Source, Emission
+
+from model import Chunk, Emission, Source
+
 
 class Worker(QObject):
 

@@ -1,6 +1,8 @@
-import textract
 import hashlib
 import os
+
+import textract
+
 
 def format_results(list_of_chunks):  # TODO unfuck
     """Returns text formatted for a QTextBrowser"""

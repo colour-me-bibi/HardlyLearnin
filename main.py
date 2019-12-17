@@ -7,16 +7,15 @@ import pickle
 import re
 import sqlite3
 import sys
-import textract
 
+import textract
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtCore import QTimer, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
-from model import Chunk, Source, Emission
+from model import Chunk, Emission, Source
+from util import format_results, get_file_hash
 from worker import Worker
-from util import get_file_hash, format_results
-
 
 # TODO maintain formatting from the docx files
 # TODO fix handling of opening external links
