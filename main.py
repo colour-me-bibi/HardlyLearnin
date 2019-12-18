@@ -43,10 +43,10 @@ class MainWindow(QMainWindow):
 
         self.history_list = list()
         self.history = self.findChild(QtWidgets.QListWidget, 'history')
-        self.history.itemClicked.connect(lambda x: self.history_item_selected(x.text()))
+        self.history.itemClicked.connect(self.history_item_selected)
 
         self.results = self.findChild(QtWidgets.QTextBrowser, 'results')
-        self.results.anchorClicked.connect(lambda x: QDesktopServices.openUrl(x))
+        self.results.anchorClicked.connect(self.open_external_link)
 
         logging.basicConfig(filename='HardlyLearnin.log',
                             level=logging.INFO,
@@ -113,19 +113,24 @@ class MainWindow(QMainWindow):
 
         conn.commit()
 
+        self.logger.info('Initialized the db connection')
+
         return conn
 
     def load_cache(self, pickle_path='serialized/cache.pickle'):
         """Returns the cache loaded from the cache.pickle file"""
 
         if not os.path.exists(pickle_path):  # Creates cache.pickle if not exists
+            self.logger.info(f'Creating: {pickle_path}')
             with open(pickle_path, 'wb+'):
                 pass
 
         if os.path.getsize(pickle_path) > 0:  # Returns cache or empty dict if empty
+            self.logger.info(f'Loading in {pickle_path} as saved cache')
             with open(pickle_path, 'rb') as in_pickle:
                 return pickle.load(in_pickle)
         else:
+            self.logger.info('Initializing the cache with an empty dict')
             return dict()
 
     def save_cache(self, pickle_path='serialized/cache.pickle'):
@@ -190,12 +195,18 @@ class MainWindow(QMainWindow):
             else:
                 self.results.setText(f'No results for {search_input}...')
 
-    def history_item_selected(self, text):
+    def history_item_selected(self, item):
         """Sets the search_bar to the selected text without deboucing results"""
+
+        text = item.text()
 
         self.logger.info(f'history_item_selected: {text}')
         self.search_bar.setText(text)
         self.text_submitted()
+
+    def open_external_link(self, qurl):
+        self.logger.info(f'Opening extrenal link: {str(qurl)}')
+        QDesktopServices.openUrl(qurl)
 
     def clean_up_on_exit(self):
         """Called on exit. Saves the cache and closes the db connection."""
