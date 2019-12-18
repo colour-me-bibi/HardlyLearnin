@@ -182,13 +182,13 @@ class MainWindow(QMainWindow):
             else:
                 self.logger.info(f'Retrieved {search_input} from cache')
 
-            if text != '[]':
+            if text != '<DOCTYPE! html><html><body></body></html>': # if not empty result
                 self.results.setHtml(text)
                 if search_input not in self.history_list:
                     self.history_list.append(search_input)
                     self.history.addItem(search_input)
             else:
-                self.results.setText(f'No results for {text}...')
+                self.results.setText(f'No results for {search_input}...')
 
     def history_item_selected(self, text):
         """Sets the search_bar to the selected text without deboucing results"""
