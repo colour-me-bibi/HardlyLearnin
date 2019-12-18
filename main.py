@@ -8,7 +8,6 @@ import re
 import sqlite3
 import sys
 
-import textract
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QDesktopServices

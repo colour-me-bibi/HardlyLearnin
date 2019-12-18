@@ -2,7 +2,6 @@ import os
 import re
 import zipfile
 
-import textract
 from lxml import etree
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
