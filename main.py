@@ -11,12 +11,11 @@ import sys
 import textract
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
 from model import Chunk, Emission, Source
 from worker import Worker
-
-# TODO fix handling of opening external links
 
 
 class MainWindow(QMainWindow):
@@ -47,6 +46,7 @@ class MainWindow(QMainWindow):
         self.history.itemClicked.connect(lambda x: self.history_item_selected(x.text()))
 
         self.results = self.findChild(QtWidgets.QTextBrowser, 'results')
+        self.results.anchorClicked.connect(lambda x: QDesktopServices.openUrl(x))
 
         logging.basicConfig(filename='HardlyLearnin.log',
                             level=logging.INFO,
@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
             else:
                 self.logger.info(f'Retrieved {search_input} from cache')
 
-            if text != '<DOCTYPE! html><html><body></body></html>': # if not empty result
+            if text != '<DOCTYPE! html><html><body></body></html>':  # if not empty result
                 self.results.setHtml(text)
                 if search_input not in self.history_list:
                     self.history_list.append(search_input)
