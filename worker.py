@@ -11,9 +11,9 @@ from model import Chunk, Emission, Source
 
 class Worker(QObject):
 
-    sig_done = pyqtSignal(int, Emission)
+    sig_done = pyqtSignal(Emission)
 
-    def __init__(self, id: int, list_of_sources: list):
+    def __init__(self, list_of_sources):
         super(Worker, self).__init__()
         self.id = id
         self.list_of_sources = list_of_sources
@@ -48,6 +48,7 @@ class Worker(QObject):
                         style_attributes.append('background-color: yellow')
 
                     tabs = x.findall('.//w:tab', name_spaces)
+                    # tabs += x.findall('.//w:ind', name_spaces)
 
                     if len(tabs) > 0:
                         style_attributes.append(f'margin-left: {len(tabs) * 40}px')
@@ -82,4 +83,4 @@ class Worker(QObject):
             appended_links = ['<div padding="10px">' + x + link_tag for x in raw_list]
 
             list_of_chunks = [Chunk(content, source.name) for content in appended_links]
-            self.sig_done.emit(self.id, Emission(source, list_of_chunks))
+            self.sig_done.emit(Emission(source, list_of_chunks))

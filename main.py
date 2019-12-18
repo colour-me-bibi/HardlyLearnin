@@ -14,10 +14,8 @@ from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
 from model import Chunk, Emission, Source
-from util import format_results, get_file_hash
 from worker import Worker
 
-# TODO maintain formatting from the docx files
 # TODO fix handling of opening external links
 
 
@@ -64,7 +62,7 @@ class MainWindow(QMainWindow):
 
         list_of_new_sources = list()
 
-        for i, source in enumerate(list_of_sources):
+        for source in list_of_sources:
             # Remove files with same hash as new ones
             old_file = self.conn.cursor().execute('SELECT name FROM sources WHERE name = ? AND file_hash != ?',
                                                   (source.name, source.file_hash)).fetchone()
@@ -87,7 +85,7 @@ class MainWindow(QMainWindow):
 
         if len(list_of_new_sources) > 0:
             # Initialize worker on a new thread
-            self.worker = Worker(69, list_of_new_sources)
+            self.worker = Worker(list_of_new_sources)
             self.thread = QThread()
             self.worker.moveToThread(self.thread)
 
@@ -136,8 +134,8 @@ class MainWindow(QMainWindow):
         with open(pickle_path, 'wb') as out_pickle:
             pickle.dump(self.cache, out_pickle)
 
-    @pyqtSlot(int, Emission)
-    def insert_emission(self, id, emission):
+    @pyqtSlot(Emission)
+    def insert_emission(self, emission):
         for chunk in emission.list_of_chunks:
             self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source))
         self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
@@ -199,13 +197,27 @@ class MainWindow(QMainWindow):
         self.search_bar.setText(text)
         self.text_submitted()
 
-
     def clean_up_on_exit(self):
         """Called on exit. Saves the cache and closes the db connection."""
 
         self.save_cache()
         self.conn.close()
         self.logger.info('Saved cache and closed db connection. Exiting...')
+
+
+def get_file_hash(file_path):
+    """Returns the sha1 hash of a file"""
+
+    hasher = hashlib.sha1()
+
+    with open(file_path, 'rb') as hash_file:
+        block_size = 65536
+        buf = hash_file.read(block_size)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = hash_file.read(block_size)
+
+    return hasher.hexdigest()
 
 
 if __name__ == '__main__':
