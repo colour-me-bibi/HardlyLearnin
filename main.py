@@ -66,16 +66,12 @@ class MainWindow(QMainWindow):
             # Remove files with same hash as new ones
             old_file = self.conn.cursor().execute('SELECT name FROM sources WHERE name = ? AND file_hash != ?',
                                                   (source.name, source.file_hash)).fetchone()
-            self.logger.info(f'old_file={old_file}')
-
             if old_file is not None:
                 self.logger.info(f'Removing old references to {source}')
                 self.remove_old(source)
 
             # Remove already imported files from list to be imported
             same_file = self.conn.cursor().execute('SELECT name FROM sources WHERE name = ?', (source.name,)).fetchone()
-            self.logger.info(f'same_file={same_file}')
-
             if same_file is None:
                 list_of_new_sources.append(source)
             else:
@@ -153,9 +149,7 @@ class MainWindow(QMainWindow):
         self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (source.name,))
         self.conn.commit()
 
-        for k, v in self.cache.items():
-            if v == source.name:
-                del self.cache[k]  # TODO probably can be optimized
+        self.cache = {k: v for k, v in self.cache.items() if v == source.name}
 
     def search_chunks(self, string):
         """Returns a the results of a db query on the chunks table for the given string"""
@@ -170,7 +164,7 @@ class MainWindow(QMainWindow):
         from the cache if available, otherwise from the sqlite db
         """
 
-        search_input = self.search_bar.text()
+        search_input = self.search_bar.text().strip()
 
         if search_input is not '':
             text = self.cache[search_input] if search_input in self.cache.keys() else None
@@ -183,9 +177,9 @@ class MainWindow(QMainWindow):
                 text = header + search_result + footer
 
                 self.cache[search_input] = text
-                self.logger.info(f'Saved {search_input} to cache')
+                self.logger.info(f'Saved "{search_input}" to cache')
             else:
-                self.logger.info(f'Retrieved {search_input} from cache')
+                self.logger.info(f'Retrieved "{search_input}" from cache')
 
             if text != '<DOCTYPE! html><html><body></body></html>':  # if not empty result
                 self.results.setHtml(text)
