@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
         self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (source.name,))
         self.conn.commit()
 
-        self.cache = {k: v for k, v in self.cache.items() if v == source.name}
+        self.cache = {k: v for k, v in self.cache.items() if v != source.name}
 
     def search_chunks(self, string):
         """Returns a the results of a db query on the chunks table for the given string"""
