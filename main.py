@@ -85,15 +85,16 @@ class MainWindow(QMainWindow):
 
         self.logger.info(f'list_of_new_sources={[str(x) for x in list_of_new_sources]}')
 
-        # Initialize worker on a new thread
-        self.worker = Worker(69, list_of_new_sources)
-        self.thread = QThread()
-        self.worker.moveToThread(self.thread)
+        if len(list_of_new_sources) > 0:
+            # Initialize worker on a new thread
+            self.worker = Worker(69, list_of_new_sources)
+            self.thread = QThread()
+            self.worker.moveToThread(self.thread)
 
-        # Define behavior of worker
-        self.worker.sig_done.connect(self.insert_emission)
-        self.thread.started.connect(self.worker.work)
-        self.thread.start()
+            # Define behavior of worker
+            self.worker.sig_done.connect(self.insert_emission)
+            self.thread.started.connect(self.worker.work)
+            self.thread.start()
 
     def init_db(self, file_base_name='HardlyLearnin'):
         """Initializes the sqlite db connection as the global variable conn"""
@@ -172,14 +173,19 @@ class MainWindow(QMainWindow):
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
-                text = format_results(self.search_chunks(search_input))
+                header = '<DOCTYPE! html><html><body>'
+                search_result = '<hr>'.join([x for x, y in self.search_chunks(search_input)])
+                footer = '</body></html>'
+
+                text = header + search_result + footer
+
                 self.cache[search_input] = text
                 self.logger.info(f'Saved {search_input} to cache')
             else:
                 self.logger.info(f'Retrieved {search_input} from cache')
 
             if text != '[]':
-                self.results.setText(text)
+                self.results.setHtml(text)
                 if search_input not in self.history_list:
                     self.history_list.append(search_input)
                     self.history.addItem(search_input)
