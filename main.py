@@ -16,6 +16,9 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 from model import Chunk, Emission, Source
 from worker import Worker
 
+# TODO rework with OCR and Google's tesseract library
+# TODO Change the QTextBrowser to a WebView and fix window resizing
+
 
 class MainWindow(QMainWindow):
     """MainWindow object, manages the UI and handles db calls"""

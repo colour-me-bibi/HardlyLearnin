@@ -14,7 +14,6 @@ class Worker(QObject):
 
     def __init__(self, list_of_sources):
         super(Worker, self).__init__()
-        self.id = id
         self.list_of_sources = list_of_sources
 
     @pyqtSlot()
@@ -37,7 +36,6 @@ class Worker(QObject):
                 text_elements = x.findall('.//w:t', name_spaces)
 
                 if len(text_elements) > 0:
-                    # TODO append formatting and text and closing tags
                     highlight = x.find('.//w:highlight', name_spaces)
                     underline = x.find('.//w:u', name_spaces)
 
@@ -47,7 +45,6 @@ class Worker(QObject):
                         style_attributes.append('background-color: yellow')
 
                     tabs = x.findall('.//w:tab', name_spaces)
-                    # tabs += x.findall('.//w:ind', name_spaces)
 
                     if len(tabs) > 0:
                         style_attributes.append(f'margin-left: {len(tabs) * 40}px')
