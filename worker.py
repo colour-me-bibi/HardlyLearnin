@@ -2,8 +2,8 @@ import os
 import re
 import subprocess
 import zipfile
-import cv2
 
+import cv2
 import pdf2image
 import pytesseract
 from PIL import Image
@@ -23,6 +23,9 @@ class Worker(QObject):
 
     @pyqtSlot()
     def work(self):
+
+        # TODO cleanup creation of temp files
+        # TODO multiprocess processing of doc files
 
         subprocess.run(f'doc2pdf import/*.docx', shell=True)
 
@@ -44,6 +47,8 @@ class Worker(QObject):
 
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
             dilate = cv2.dilate(thresh, kernel, iterations=8)
+
+            # TODO adjust dilation for better sectioning
 
             cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             cnts = cnts[0] if len(cnts) == 2 else cnts[1]

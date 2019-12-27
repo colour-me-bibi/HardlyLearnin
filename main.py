@@ -172,6 +172,8 @@ class MainWindow(QMainWindow):
         search_input = self.search_bar.text().strip()
 
         if search_input is not '':
+            # TODO only start using the cache if imports are done
+
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
@@ -179,14 +181,15 @@ class MainWindow(QMainWindow):
 
                 header = '<DOCTYPE! html><html><body>'
 
+                # TODO fix height and width scaling of img element
+
                 search_result = '<hr>'.join([f'''
                     <div>
                         <img src="{image}">
                     </div>
                     <div id="source">
                         <a href="{source}">{source}</a>
-                    </div>''' for _, image, source in self.search_chunks(search_input)]
-                )
+                    </div>''' for _, image, source in self.search_chunks(search_input)])
 
                 footer = '</body></html>'
 
