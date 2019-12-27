@@ -1,8 +1,12 @@
 import os
 import re
+import subprocess
 import zipfile
+import cv2
 
-from lxml import etree
+import pdf2image
+import pytesseract
+from PIL import Image
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from model import Chunk, Emission, Source
@@ -11,6 +15,7 @@ from model import Chunk, Emission, Source
 class Worker(QObject):
 
     sig_done = pyqtSignal(Emission)
+    sig_log = pyqtSignal(str)
 
     def __init__(self, list_of_sources):
         super(Worker, self).__init__()
@@ -18,65 +23,43 @@ class Worker(QObject):
 
     @pyqtSlot()
     def work(self):
-        name_spaces = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+
+        subprocess.run(f'doc2pdf import/*.docx', shell=True)
 
         for source in self.list_of_sources:
+            pdf_images = pdf2image.convert_from_path(f'{os.path.splitext(source.name)[0]}.pdf', fmt='png')
+            first_image = pdf_images[0]
+            combined_image = Image.new('RGB', (first_image.width, first_image.height * len(pdf_images)))
 
-            zip_file = zipfile.ZipFile(source.name)
-            xml_content = zip_file.open('word/document.xml')
-            root = etree.parse(xml_content).getroot()
+            for i, image in enumerate(pdf_images):
+                combined_image.paste(image, (0, i * image.height))
 
-            paragraphs = root.findall('.//w:p', name_spaces)
+            combined_image.save(f'{os.path.splitext(source.name)[0]}.png')
 
-            html_elements = list()
+            cv_image = cv2.imread(f'{os.path.splitext(source.name)[0]}.png')
 
-            for x in paragraphs:
-                formatted_html = str()
+            gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (7, 7), 0)
+            thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
-                text_elements = x.findall('.//w:t', name_spaces)
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+            dilate = cv2.dilate(thresh, kernel, iterations=8)
 
-                if len(text_elements) > 0:
-                    highlight = x.find('.//w:highlight', name_spaces)
-                    underline = x.find('.//w:u', name_spaces)
+            cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
-                    style_attributes = list()
+            list_of_chunks = list()
 
-                    if highlight is not None:
-                        style_attributes.append('background-color: yellow')
+            for i, c in enumerate(cnts):
+                x, y, w, h = cv2.boundingRect(c)
+                cropped_image = cv_image[y:y + h, x:x + w]
 
-                    tabs = x.findall('.//w:tab', name_spaces)
+                cropped_image_path = f'output/{os.path.basename(source.name)}-{i}.png'
+                cropped_image_text = pytesseract.image_to_string(cropped_image)
 
-                    if len(tabs) > 0:
-                        style_attributes.append(f'margin-left: {len(tabs) * 40}px')
+                if re.search(r'[a-zA-Z]', cropped_image_text) is not None:
+                    cv2.imwrite(cropped_image_path, cropped_image)
+                    list_of_chunks.append(Chunk(cropped_image_text, cropped_image_path, source.name))
 
-                    if len(style_attributes) > 0:
-                        formatted_html += f'<p style="{"; ".join(style_attributes)}">'
-                    else:
-                        formatted_html += '<p>'
-
-                    if underline is not None:
-                        formatted_html += '<u>'
-
-                    for element in text_elements:
-                        formatted_html += element.text
-
-                    if underline is not None:
-                        formatted_html += '</u>'
-
-                    formatted_html += '</p>'
-                else:
-                    formatted_html = '<br/>'
-
-                html_elements.append(formatted_html)
-
-            raw_string = ''.join(html_elements)
-
-            splitters = list(sorted({raw_string.count(x): x for x in set(re.findall(r'(?:<br\/>)+', raw_string))}.items()))
-            raw_list = re.split('|'.join(map(re.escape, [x[1] for x in splitters])), raw_string)
-
-            link_tag = f'<div align="right"><p>Source: <a href="{os.path.abspath(source.name)}">{source.name}</a></p></div></div>'
-
-            appended_links = ['<div padding="10px">' + x + link_tag for x in raw_list]
-
-            list_of_chunks = [Chunk(content, source.name) for content in appended_links]
+            self.sig_log.emit(f'emitting: {Emission(source, list_of_chunks)}')
             self.sig_done.emit(Emission(source, list_of_chunks))

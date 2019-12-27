@@ -7,3 +7,4 @@ test_data/
 .pylintrc
 __pycache__/
 test.*
+tmp/

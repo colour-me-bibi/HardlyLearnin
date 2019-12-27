@@ -1,12 +1,13 @@
 class Chunk:
     """This is a class representing the database entry of a chunk from a docx file"""
 
-    def __init__(self, content, source):
-        self.content = content
+    def __init__(self, text, image, source):
+        self.text = text
+        self.image = image
         self.source = source
 
     def __str__(self):
-        return f'Chunk (content: {self.content}, source: {self.source})'
+        return f'Chunk (text: {self.text}, image: {self.image}, source: {self.source})'
 
 class Source:
     """This is a class representing the db entry of a docx file source"""
@@ -26,4 +27,4 @@ class Emission:
         self.list_of_chunks = list_of_chunks
 
     def __str__(self):
-        return f'Emission (source={source}, list_of_chunks={list_of_chunks})'
+        return f'Emission (source={self.source}, list_of_chunks={self.list_of_chunks})'

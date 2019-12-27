@@ -16,9 +16,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 from model import Chunk, Emission, Source
 from worker import Worker
 
-# TODO rework with OCR and Google's tesseract library
-# TODO Change the QTextBrowser to a WebView and fix window resizing
-
 
 class MainWindow(QMainWindow):
     """MainWindow object, manages the UI and handles db calls"""
@@ -89,6 +86,7 @@ class MainWindow(QMainWindow):
 
             # Define behavior of worker
             self.worker.sig_done.connect(self.insert_emission)
+            self.worker.sig_log.connect(self.log_from_thread)
             self.thread.started.connect(self.worker.work)
             self.thread.start()
 
@@ -99,7 +97,8 @@ class MainWindow(QMainWindow):
 
         conn.cursor().execute('''
         CREATE TABLE IF NOT EXISTS chunks (
-            content TEXT,
+            text TEXT,
+            image TEXT,
             source TEXT
         )''')
 
@@ -140,9 +139,13 @@ class MainWindow(QMainWindow):
     @pyqtSlot(Emission)
     def insert_emission(self, emission):
         for chunk in emission.list_of_chunks:
-            self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?)', (chunk.content, chunk.source))
+            self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?, ?)', (chunk.text, chunk.image, chunk.source))
         self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
         self.conn.commit()
+
+    @pyqtSlot(str)
+    def log_from_thread(self, message):
+        self.logger.info(message)
 
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
@@ -157,7 +160,7 @@ class MainWindow(QMainWindow):
         """Returns a the results of a db query on the chunks table for the given string"""
 
         return self.conn.cursor() \
-            .execute(f'SELECT * FROM chunks WHERE content LIKE ?', (f'%{string}%',)) \
+            .execute(f'SELECT * FROM chunks WHERE text LIKE ?', (f'%{string}%',)) \
             .fetchall()
 
     def text_submitted(self):
@@ -172,8 +175,19 @@ class MainWindow(QMainWindow):
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
+                result = self.search_chunks(search_input)
+
                 header = '<DOCTYPE! html><html><body>'
-                search_result = '<hr>'.join([x for x, y in self.search_chunks(search_input)])
+
+                search_result = '<hr>'.join([f'''
+                    <div>
+                        <img src="{image}">
+                    </div>
+                    <div id="source">
+                        <a href="{source}">{source}</a>
+                    </div>''' for _, image, source in self.search_chunks(search_input)]
+                )
+
                 footer = '</body></html>'
 
                 text = header + search_result + footer
