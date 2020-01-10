@@ -12,6 +12,7 @@ from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+from yattag import Doc
 
 from model import Chunk, Emission, Source
 from worker import Worker
@@ -177,30 +178,37 @@ class MainWindow(QMainWindow):
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
-                result = self.search_chunks(search_input)
-
-                header = '<DOCTYPE! html><html><body>'
+                results = self.search_chunks(search_input)
 
                 # TODO fix height and width scaling of img element
 
-                search_result = '<hr>'.join([f'''
-                    <div>
-                        <img src="{image}">
-                    </div>
-                    <div id="source">
-                        <a href="{source}">{source}</a>
-                    </div>''' for _, image, source in self.search_chunks(search_input)])
+                if len(results) > 0:
+                    doc, tag, text = Doc().tagtext()
 
-                footer = '</body></html>'
+                    with tag('html'):
+                        with tag('body'):
+                            for i, (_, image, source) in enumerate(results):
+                                with tag('div'):
+                                    with tag('img', src=image):
+                                        pass
+                                with tag('div'):
+                                    with tag('a', href=source):
+                                        text(source)
 
-                text = header + search_result + footer
+                                if i < len(results) - 1:
+                                    with tag('hr'):
+                                        pass
 
-                self.cache[search_input] = text
-                self.logger.info(f'Saved "{search_input}" to cache')
+                    text = doc.getvalue()
+
+                    self.cache[search_input] = text
+                    self.logger.info(f'Saved "{search_input}" to cache')
             else:
                 self.logger.info(f'Retrieved "{search_input}" from cache')
 
-            if text != '<DOCTYPE! html><html><body></body></html>':  # if not empty result
+            print(text)
+
+            if text is not None:
                 self.results.setHtml(text)
                 if search_input not in self.history_list:
                     self.history_list.append(search_input)
