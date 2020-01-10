@@ -206,8 +206,6 @@ class MainWindow(QMainWindow):
             else:
                 self.logger.info(f'Retrieved "{search_input}" from cache')
 
-            print(text)
-
             if text is not None:
                 self.results.setHtml(text)
                 if search_input not in self.history_list:
