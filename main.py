@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
 
                 # TODO fix height and width scaling of img element
 
-                if len(results) > 0:
+                if results:
                     doc, tag, text = Doc().tagtext()
 
                     with tag('html'):
