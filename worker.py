@@ -1,8 +1,8 @@
+import glob
 import os
 import re
 import subprocess
 import zipfile
-import glob
 
 import cv2
 import pdf2image
@@ -79,9 +79,7 @@ class Worker(QObject):
 
         doc_file_list = glob.glob('import/*.docx')
         doc_file_list += glob.glob('import/*.doc')
-        
+
         for item in glob.glob('import/*.pdf'):
             if any([os.path.splitext(item)[0] == os.path.splitext(x)[0] for x in doc_file_list]):
                 os.remove(item)
-
-

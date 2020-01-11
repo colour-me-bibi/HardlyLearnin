@@ -17,7 +17,6 @@ from yattag import Doc
 from model import Chunk, Emission, Source
 from worker import Worker
 
-
 # TODO work for txt, doc, and pdf
 
 
@@ -166,6 +165,10 @@ class MainWindow(QMainWindow):
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
 
+        for x in self.conn.cursor().execute('SELECT source FROM chuunks WHERE source = ?', (source.name)) \
+                                   .fetchall():  # TODO make sure works
+            os.remove(x)
+
         self.conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (source.name,))
         self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (source.name,))
         self.conn.commit()
@@ -175,9 +178,8 @@ class MainWindow(QMainWindow):
     def search_chunks(self, string):
         """Returns a the results of a db query on the chunks table for the given string"""
 
-        return self.conn.cursor() \
-            .execute(f'SELECT * FROM chunks WHERE text LIKE ?', (f'%{string}%',)) \
-            .fetchall()
+        return self.conn.cursor().execute(f'SELECT * FROM chunks WHERE text LIKE ?', (f'%{string}%',)) \
+                                 .fetchall()
 
     def text_submitted(self):
         """
