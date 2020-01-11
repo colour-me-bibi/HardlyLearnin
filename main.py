@@ -17,8 +17,6 @@ from yattag import Doc
 from model import Chunk, Emission, Source
 from worker import Worker
 
-# TODO work for txt, doc, and pdf
-
 
 class MainWindow(QMainWindow):
     """MainWindow object, manages the UI and handles db calls"""
@@ -165,9 +163,11 @@ class MainWindow(QMainWindow):
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
 
-        for x in self.conn.cursor().execute('SELECT source FROM chuunks WHERE source = ?', (source.name)) \
-                                   .fetchall():  # TODO make sure works
-            os.remove(x)
+        self.logger.info(f'Removing old source: {source}')
+
+        for x in self.conn.cursor().execute('SELECT image FROM chunks WHERE source = ?', (source.name,)) \
+                                   .fetchall():
+            os.remove(x[0])
 
         self.conn.cursor().execute('DELETE FROM chunks WHERE source = ?', (source.name,))
         self.conn.cursor().execute('DELETE FROM sources WHERE name = ?', (source.name,))
@@ -190,14 +190,10 @@ class MainWindow(QMainWindow):
         search_input = self.search_bar.text().strip()
 
         if search_input is not '':
-            # TODO only start using the cache if imports are done
-
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
                 results = self.search_chunks(search_input)
-
-                # TODO fix height and width scaling of img element
 
                 if results:
                     doc, tag, text = Doc().tagtext()
