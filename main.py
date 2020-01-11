@@ -40,7 +40,7 @@ class MainWindow(QMainWindow):
         self.debounce.timeout.connect(self.text_submitted)
 
         self.search_bar = self.findChild(QtWidgets.QLineEdit, 'search_bar')
-        self.search_bar.textEdited.connect(self.debounce.start)
+        self.search_bar.textEdited.connect(lambda search: self.search_edited(search.strip()))
 
         self.history_list = list()
         self.history = self.findChild(QtWidgets.QListWidget, 'history')
@@ -184,52 +184,61 @@ class MainWindow(QMainWindow):
         return self.conn.cursor().execute(f'SELECT * FROM chunks WHERE text LIKE ?', (f'%{string}%',)) \
                                  .fetchall()
 
+    def search_edited(self, text):
+        if text:
+            self.debounce.text = text
+            self.debounce.start()
+        else:
+            self.debounce.stop()
+            self.results.setText('')
+
     def text_submitted(self):
         """
         Updates the text in the results QTextBrowser with formatted results
         from the cache if available, otherwise from the sqlite db
         """
 
-        search_input = self.search_bar.text().strip()
+        # TODO make this neater
 
-        if search_input:
-            text = self.cache[search_input] if search_input in self.cache.keys() else None
+        search_input = self.debounce.text
 
-            if text is None:
-                results = self.search_chunks(search_input)
+        text = self.cache[search_input] if search_input in self.cache.keys() else None
 
-                if results:
-                    doc, tag, text = Doc().tagtext()
+        if text is None:
+            results = self.search_chunks(search_input)
 
-                    with tag('html'):
-                        with tag('body'):
-                            for i, (_, image, source) in enumerate(results):
-                                with tag('div'):
-                                    with tag('img', src=image):
-                                        pass
-                                with tag('div'):
-                                    with tag('a', href=source):
-                                        text(source)
+            if results:
+                doc, tag, text = Doc().tagtext()
 
-                                if i < len(results) - 1:
-                                    with tag('hr'):
-                                        pass
+                with tag('html'):
+                    with tag('body'):
+                        for i, (_, image, source) in enumerate(results):
+                            with tag('div'):
+                                with tag('img', src=image):
+                                    pass
+                            with tag('div'):
+                                with tag('a', href=source):
+                                    text(source)
 
-                    text = doc.getvalue()
+                            if i < len(results) - 1:
+                                with tag('hr'):
+                                    pass
 
-                    if self.imports_complete:
-                        self.cache[search_input] = text
-                        self.logger.info(f'Saved "{search_input}" to cache')
-            else:
-                self.logger.info(f'Retrieved "{search_input}" from cache')
+                text = doc.getvalue()
 
-            if text is not None:
-                self.results.setHtml(text)
-                if search_input not in self.history_list:
-                    self.history_list.append(search_input)
-                    self.history.addItem(search_input)
-            else:
-                self.results.setText(f'No results for {search_input}...')
+                if self.imports_complete:
+                    self.cache[search_input] = text
+                    self.logger.info(f'Saved "{search_input}" to cache')
+        else:
+            self.logger.info(f'Retrieved "{search_input}" from cache')
+
+        if text is not None:
+            self.results.setHtml(text)
+            if search_input not in self.history_list:
+                self.history_list.append(search_input)
+                self.history.addItem(search_input)
+        else:
+            self.results.setText(f'No results for {search_input}...')
 
     def history_item_selected(self, text):
         """Sets the search_bar to the selected text without deboucing results"""
