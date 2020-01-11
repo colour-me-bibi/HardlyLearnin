@@ -18,6 +18,9 @@ from model import Chunk, Emission, Source
 from worker import Worker
 
 
+# TODO work for txt, doc, and pdf
+
+
 class MainWindow(QMainWindow):
     """MainWindow object, manages the UI and handles db calls"""
 
@@ -57,7 +60,12 @@ class MainWindow(QMainWindow):
 
         self.cache = self.load_cache()
 
-        list_of_sources = [Source(x, get_file_hash(x)) for x in glob.glob('import/**.docx')]
+        self.imports_complete = False
+
+        list_of_sources = [Source(x, get_file_hash(x)) for x in glob.glob('import/*.docx')]
+        list_of_sources += [Source(x, get_file_hash(x)) for x in glob.glob('import/*.doc')]
+        list_of_sources += [Source(x, get_file_hash(x)) for x in glob.glob('import/*.pdf')]
+
         self.logger.info(f'list_of_sources={[str(x) for x in list_of_sources]}')
 
         list_of_new_sources = list()
@@ -86,10 +94,13 @@ class MainWindow(QMainWindow):
             self.worker.moveToThread(self.thread)
 
             # Define behavior of worker
-            self.worker.sig_done.connect(self.insert_emission)
             self.worker.sig_log.connect(self.log_from_thread)
+            self.worker.sig_done.connect(self.insert_emission)
+            self.worker.sig_complete.connect(lambda x: self.imports_completed(x))
             self.thread.started.connect(self.worker.work)
             self.thread.start()
+        else:
+            self.imports_complete = True
 
     def init_db(self, file_base_name='HardlyLearnin'):
         """Initializes the sqlite db connection as the global variable conn"""
@@ -137,6 +148,10 @@ class MainWindow(QMainWindow):
         with open(pickle_path, 'wb') as out_pickle:
             pickle.dump(self.cache, out_pickle)
 
+    @pyqtSlot(str)
+    def log_from_thread(self, message):
+        self.logger.info(message)
+
     @pyqtSlot(Emission)
     def insert_emission(self, emission):
         for chunk in emission.list_of_chunks:
@@ -144,9 +159,9 @@ class MainWindow(QMainWindow):
         self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
         self.conn.commit()
 
-    @pyqtSlot(str)
-    def log_from_thread(self, message):
-        self.logger.info(message)
+    @pyqtSlot(bool)
+    def imports_completed(self, x):
+        self.imports_complete = x
 
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
@@ -201,8 +216,9 @@ class MainWindow(QMainWindow):
 
                     text = doc.getvalue()
 
-                    self.cache[search_input] = text
-                    self.logger.info(f'Saved "{search_input}" to cache')
+                    if self.imports_complete:
+                        self.cache[search_input] = text
+                        self.logger.info(f'Saved "{search_input}" to cache')
             else:
                 self.logger.info(f'Retrieved "{search_input}" from cache')
 

@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import zipfile
+import glob
 
 import cv2
 import pdf2image
@@ -14,8 +15,9 @@ from model import Chunk, Emission, Source
 
 class Worker(QObject):
 
-    sig_done = pyqtSignal(Emission)
     sig_log = pyqtSignal(str)
+    sig_done = pyqtSignal(Emission)
+    sig_complete = pyqtSignal(bool)
 
     def __init__(self, list_of_sources):
         super(Worker, self).__init__()
@@ -28,6 +30,7 @@ class Worker(QObject):
         # TODO multiprocess processing of doc files
 
         subprocess.run(f'doc2pdf import/*.docx', shell=True)
+        subprocess.run(f'doc2pdf import/*.doc', shell=True)
 
         for source in self.list_of_sources:
             pdf_images = pdf2image.convert_from_path(f'{os.path.splitext(source.name)[0]}.pdf', fmt='png')
@@ -68,3 +71,17 @@ class Worker(QObject):
 
             self.sig_log.emit(f'emitting: {Emission(source, list_of_chunks)}')
             self.sig_done.emit(Emission(source, list_of_chunks))
+
+        self.sig_complete.emit(True)
+
+        for item in glob.glob('import/*.png'):
+            os.remove(item)
+
+        doc_file_list = glob.glob('import/*.docx')
+        doc_file_list += glob.glob('import/*.doc')
+        
+        for item in glob.glob('import/*.pdf'):
+            if any([os.path.splitext(item)[0] == os.path.splitext(x)[0] for x in doc_file_list]):
+                os.remove(item)
+
+
