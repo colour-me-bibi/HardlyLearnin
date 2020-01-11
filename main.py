@@ -102,7 +102,7 @@ class MainWindow(QMainWindow):
             self.imports_completed()
 
     def init_db(self, file_base_name='HardlyLearnin'):
-        """Initializes the sqlite db connection as the global variable conn"""
+        """Initializes the db connection as the global variable conn"""
 
         conn = sqlite3.connect(f'{file_base_name}.db')
 
@@ -195,17 +195,16 @@ class MainWindow(QMainWindow):
     def text_submitted(self):
         """
         Updates the text in the results QTextBrowser with formatted results
-        from the cache if available, otherwise from the sqlite db
+        from the cache if available, otherwise from the db
         """
 
-        # TODO make this neater
+        display_text = f'No results for {self.debounce.text}...'
 
-        search_input = self.debounce.text
-
-        text = self.cache[search_input] if search_input in self.cache.keys() else None
-
-        if text is None:
-            results = self.search_chunks(search_input)
+        if self.imports_complete and self.debounce.text in self.cache.keys():
+            display_text = self.cache[self.debounce.text]
+            self.logger.info(f'Retrieved "{self.debounce.text}" from cache')
+        else:
+            results = self.search_chunks(self.debounce.text)
 
             if results:
                 doc, tag, text = Doc().tagtext()
@@ -224,21 +223,17 @@ class MainWindow(QMainWindow):
                                 with tag('hr'):
                                     pass
 
-                text = doc.getvalue()
+                display_text = doc.getvalue()
 
                 if self.imports_complete:
-                    self.cache[search_input] = text
-                    self.logger.info(f'Saved "{search_input}" to cache')
-        else:
-            self.logger.info(f'Retrieved "{search_input}" from cache')
+                    self.cache[self.debounce.text] = display_text
+                    self.logger.info(f'Saved "{self.debounce.text}" to cache')
 
-        if text is not None:
-            self.results.setHtml(text)
-            if search_input not in self.history_list:
-                self.history_list.append(search_input)
-                self.history.addItem(search_input)
-        else:
-            self.results.setText(f'No results for {search_input}...')
+        self.results.setHtml(display_text)
+
+        if self.debounce.text not in self.history_list:
+            self.history_list.append(self.debounce.text)
+            self.history.addItem(self.debounce.text)
 
     def history_item_selected(self, text):
         """Sets the search_bar to the selected text without deboucing results"""
