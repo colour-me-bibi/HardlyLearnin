@@ -60,6 +60,8 @@ class MainWindow(QMainWindow):
 
         self.imports_complete = False
 
+        self.statusBar.showMessage('Processing imports...')
+
         list_of_sources = [Source(path, get_file_hash(path))
                            for ext in ('.docx', '.doc', '.pdf') for path in glob(f'import/*{ext}')]
 
@@ -97,7 +99,7 @@ class MainWindow(QMainWindow):
             self.thread.started.connect(self.worker.work)
             self.thread.start()
         else:
-            self.imports_complete = True
+            self.imports_completed()
 
     def init_db(self, file_base_name='HardlyLearnin'):
         """Initializes the sqlite db connection as the global variable conn"""
@@ -159,6 +161,7 @@ class MainWindow(QMainWindow):
     @pyqtSlot()
     def imports_completed(self):
         self.imports_complete = True
+        self.statusBar.hide()
 
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""
