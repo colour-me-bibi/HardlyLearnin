@@ -1,5 +1,5 @@
 import atexit
-import glob
+import functools
 import hashlib
 import logging
 import os
@@ -7,6 +7,7 @@ import pickle
 import re
 import sqlite3
 import sys
+from glob import glob
 
 from PyQt5 import QtWidgets, uic
 from PyQt5.QtCore import QThread, QTimer, pyqtSignal, pyqtSlot
@@ -59,9 +60,8 @@ class MainWindow(QMainWindow):
 
         self.imports_complete = False
 
-        list_of_sources = [Source(x, get_file_hash(x)) for x in glob.glob('import/*.docx')]
-        list_of_sources += [Source(x, get_file_hash(x)) for x in glob.glob('import/*.doc')]
-        list_of_sources += [Source(x, get_file_hash(x)) for x in glob.glob('import/*.pdf')]
+        list_of_sources = [Source(path, get_file_hash(path))
+                           for ext in ('.docx', '.doc', '.pdf') for path in glob(f'import/*{ext}')]
 
         self.logger.info(f'list_of_sources={[str(x) for x in list_of_sources]}')
 
@@ -93,7 +93,7 @@ class MainWindow(QMainWindow):
             # Define behavior of worker
             self.worker.sig_log.connect(self.log_from_thread)
             self.worker.sig_done.connect(self.insert_emission)
-            self.worker.sig_complete.connect(lambda x: self.imports_completed(x))
+            self.worker.sig_complete.connect(self.imports_completed)
             self.thread.started.connect(self.worker.work)
             self.thread.start()
         else:
@@ -156,9 +156,9 @@ class MainWindow(QMainWindow):
         self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
         self.conn.commit()
 
-    @pyqtSlot(bool)
-    def imports_completed(self, x):
-        self.imports_complete = x
+    @pyqtSlot()
+    def imports_completed(self):
+        self.imports_complete = True
 
     def remove_old(self, source):
         """Removes references of an old file from the cache and db"""

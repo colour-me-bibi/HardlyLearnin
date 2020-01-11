@@ -1,8 +1,9 @@
-import glob
+import functools
 import os
 import re
 import subprocess
 import zipfile
+from glob import glob
 
 import cv2
 import pdf2image
@@ -17,7 +18,7 @@ class Worker(QObject):
 
     sig_log = pyqtSignal(str)
     sig_done = pyqtSignal(Emission)
-    sig_complete = pyqtSignal(bool)
+    sig_complete = pyqtSignal()
 
     def __init__(self, list_of_sources):
         super(Worker, self).__init__()
@@ -26,11 +27,10 @@ class Worker(QObject):
     @pyqtSlot()
     def work(self):
 
-        # TODO cleanup creation of temp files
-        # TODO multiprocess processing of doc files
+        # TODO multiprocess process imports
 
-        subprocess.run(f'doc2pdf import/*.docx', shell=True)
-        subprocess.run(f'doc2pdf import/*.doc', shell=True)
+        for ext in ('.docx', '.doc'):
+            subprocess.run(f'doc2pdf import/*{ext}', shell=True)
 
         for source in self.list_of_sources:
             pdf_images = pdf2image.convert_from_path(f'{os.path.splitext(source.name)[0]}.pdf', fmt='png')
@@ -72,14 +72,13 @@ class Worker(QObject):
             self.sig_log.emit(f'emitting: {Emission(source, list_of_chunks)}')
             self.sig_done.emit(Emission(source, list_of_chunks))
 
-        self.sig_complete.emit(True)
+        self.sig_complete.emit()
 
-        for item in glob.glob('import/*.png'):
+        for item in glob('import/*.png'):
             os.remove(item)
 
-        doc_file_list = glob.glob('import/*.docx')
-        doc_file_list += glob.glob('import/*.doc')
+        doc_file_list = [path for ext in ('.docx', '.doc') for path in glob(f'import/*{ext}')]
 
-        for item in glob.glob('import/*.pdf'):
+        for item in glob('import/*.pdf'):
             if any([os.path.splitext(item)[0] == os.path.splitext(x)[0] for x in doc_file_list]):
                 os.remove(item)
