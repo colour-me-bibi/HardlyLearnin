@@ -142,17 +142,21 @@ class MainWindow(QMainWindow):
             return dict()
 
     def save_cache(self, pickle_path='serialized/cache.pickle'):
-        """Save the cache from the cache global variable as a pickle file"""
+        """Saves the cache from the cache global variable as a pickle file"""
 
         with open(pickle_path, 'wb') as out_pickle:
             pickle.dump(self.cache, out_pickle)
 
     @pyqtSlot(str)
     def log_from_thread(self, message):
+        """Logs messages from the worker QThread"""
+
         self.logger.info(message)
 
     @pyqtSlot(Emission)
     def insert_emission(self, emission):
+        """Inserts emissions from the worker into the db"""
+
         for chunk in emission.list_of_chunks:
             self.conn.cursor().execute('INSERT INTO chunks VALUES (?, ?, ?)', (chunk.text, chunk.image, chunk.source))
         self.conn.cursor().execute('INSERT INTO sources VALUES (?, ?)', (emission.source.name, emission.source.file_hash))
@@ -160,11 +164,13 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot()
     def imports_completed(self):
+        """Sets imports_complete to True to enable caching and hides the status bar"""
+
         self.imports_complete = True
         self.statusBar.hide()
 
     def remove_old(self, source):
-        """Removes references of an old file from the cache and db"""
+        """Removes references of an old file from the cache, db, and generated images"""
 
         self.logger.info(f'Removing old source: {source}')
 
@@ -241,6 +247,8 @@ class MainWindow(QMainWindow):
         self.text_submitted()
 
     def open_external_link(self, qurl):
+        """Opens sources clicked from the UI using the default program"""
+
         self.logger.info(f'Opening extrenal link: {str(qurl)}')
         QDesktopServices.openUrl(qurl)
 
