@@ -69,8 +69,10 @@ class Worker(QObject):
                     cv2.imwrite(cropped_image_path, cropped_image)
                     list_of_chunks.append(Chunk(cropped_image_text, cropped_image_path, source.name))
 
-            self.sig_log.emit(f'emitting: {Emission(source, list_of_chunks)}')
-            self.sig_done.emit(Emission(source, list_of_chunks))
+            emission = Emission(source, list_of_chunks)
+
+            self.sig_log.emit(f'emitting: {emission}')
+            self.sig_done.emit(emission)
 
         self.sig_complete.emit()
 

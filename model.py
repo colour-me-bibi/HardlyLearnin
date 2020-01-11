@@ -27,4 +27,4 @@ class Emission:
         self.list_of_chunks = list_of_chunks
 
     def __str__(self):
-        return f'Emission (source={self.source}, list_of_chunks={self.list_of_chunks})'
+        return f'Emission (source={self.source}, list_of_chunks={[str(x) for x in self.list_of_chunks]})'

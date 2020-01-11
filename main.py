@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
 
         self.history_list = list()
         self.history = self.findChild(QtWidgets.QListWidget, 'history')
-        self.history.itemClicked.connect(self.history_item_selected)
+        self.history.itemClicked.connect(lambda item: self.history_item_selected(item.text()))
 
         self.results = self.findChild(QtWidgets.QTextBrowser, 'results')
         self.results.anchorClicked.connect(self.open_external_link)
@@ -86,14 +86,14 @@ class MainWindow(QMainWindow):
 
         self.logger.info(f'list_of_new_sources={[str(x) for x in list_of_new_sources]}')
 
-        if len(list_of_new_sources) > 0:
+        if list_of_new_sources:
             # Initialize worker on a new thread
             self.worker = Worker(list_of_new_sources)
             self.thread = QThread()
             self.worker.moveToThread(self.thread)
 
             # Define behavior of worker
-            self.worker.sig_log.connect(self.log_from_thread)
+            self.worker.sig_log.connect(lambda msg: self.logger.info(msg))
             self.worker.sig_done.connect(self.insert_emission)
             self.worker.sig_complete.connect(self.imports_completed)
             self.thread.started.connect(self.worker.work)
@@ -133,7 +133,7 @@ class MainWindow(QMainWindow):
             with open(pickle_path, 'wb+'):
                 pass
 
-        if os.path.getsize(pickle_path) > 0:  # Returns cache or empty dict if empty
+        if os.path.getsize(pickle_path):  # Returns cache or empty dict if empty
             self.logger.info(f'Loading in {pickle_path} as saved cache')
             with open(pickle_path, 'rb') as in_pickle:
                 return pickle.load(in_pickle)
@@ -146,12 +146,6 @@ class MainWindow(QMainWindow):
 
         with open(pickle_path, 'wb') as out_pickle:
             pickle.dump(self.cache, out_pickle)
-
-    @pyqtSlot(str)
-    def log_from_thread(self, message):
-        """Logs messages from the worker QThread"""
-
-        self.logger.info(message)
 
     @pyqtSlot(Emission)
     def insert_emission(self, emission):
@@ -198,7 +192,7 @@ class MainWindow(QMainWindow):
 
         search_input = self.search_bar.text().strip()
 
-        if search_input is not '':
+        if search_input:
             text = self.cache[search_input] if search_input in self.cache.keys() else None
 
             if text is None:
@@ -237,10 +231,8 @@ class MainWindow(QMainWindow):
             else:
                 self.results.setText(f'No results for {search_input}...')
 
-    def history_item_selected(self, item):
+    def history_item_selected(self, text):
         """Sets the search_bar to the selected text without deboucing results"""
-
-        text = item.text()
 
         self.logger.info(f'history_item_selected: {text}')
         self.search_bar.setText(text)
@@ -267,10 +259,10 @@ def get_file_hash(file_path):
 
     with open(file_path, 'rb') as hash_file:
         block_size = 65536
-        buf = hash_file.read(block_size)
-        while len(buf) > 0:
-            hasher.update(buf)
-            buf = hash_file.read(block_size)
+        buffer = hash_file.read(block_size)
+        while buffer:
+            hasher.update(buffer)
+            buffer = hash_file.read(block_size)
 
     return hasher.hexdigest()
 
